@@ -1,33 +1,113 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# ========================
+# Java / Spring Boot
+# ========================
+*.class
+*.jar
+*.war
+*.ear
+*.iml
+*.log
+*.hprof
+*.db
 
-### STS ###
+# Maven / Gradle
+target/
+build/
+out/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot DevTools
+spring-boot-devtools-*.jar
+
+# ========================
+# IDE / Editor
+# ========================
+# IntelliJ IDEA
+.idea/
+*.iws
+*.ipr
+*.iml
+
+# Eclipse
+.metadata/
+*.tmp
+*.bak
+*.swp
+.settings/
+bin/
+tmp/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# STS
 .apt_generated
-.classpath
 .factorypath
-.project
-.settings
 .springBeans
 .sts4-cache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+*.out
+*.err
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
+# ========================
+# OS Files
+# ========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ========================
+# Docker
+# ========================
+**/docker-compose.override.yml
+**/docker-compose.override.yaml
+**/docker-compose.local.yml
+**/docker-compose.local.yaml
+*.tar
+*.img
+
+# ========================
+# Kubernetes / Kustomize
+# ========================
+*.kube
+*.kustomization
+*.bak
+*.tmp
+
+# ========================
+# Environment / Secrets
+# ========================
+*.env
+.env.*
+*.secret
+secrets/
+config/secrets/
+credentials/
+
+# ========================
+# Service-specific ignores
+# ========================
+# Ignore build folders in microservices
+!**/src/main/**/target/
+!**/src/test/**/target/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+# ========================
+# Misc
+# ========================
+HELP.md
