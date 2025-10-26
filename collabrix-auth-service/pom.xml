@@ -2,17 +2,18 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.7</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>com.collabrix.auth</groupId>
-	<artifactId>collabrix-auth-service</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>collabrix-auth-service</name>
-	<description>Task &amp; Project Management SaaS (Spring Boot + Microservices + Async Notifications)</description>
+    <parent>
+        <groupId>com.collabrix</groupId>
+        <artifactId>collabrix-backend</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.collabrix.auth</groupId>
+    <artifactId>collabrix-auth-service</artifactId>
+    <packaging>jar</packaging>
+    <name>Collabrix Auth Service</name>
+    <description>Collabrix - Authentication and Security Microservice</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -30,7 +31,14 @@
 		<java.version>25</java.version>
 	</properties>
 	<dependencies>
-		<dependency>
+        <!-- Shared libraries -->
+        <dependency>
+            <groupId>com.collabrix</groupId>
+            <artifactId>collabrix-common-libraries</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
@@ -136,7 +144,9 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
-				</configuration>
+                    <source>9</source>
+                    <target>9</target>
+                </configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

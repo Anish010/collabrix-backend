@@ -1,8 +1,8 @@
 package com.collabrix.auth.service;
 
 import com.collabrix.auth.entity.Role;
-import com.collabrix.auth.exception.BusinessException;
 import com.collabrix.auth.repository.RoleRepository;
+import com.collabrix.common.libraries.exceptions.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ public class RoleService {
     public Role createRole(String roleName, boolean systemDefined) {
         if (roleRepository.existsByName(roleName)) {
             log.warn("Role {} already exists", roleName);
-            throw new BusinessException("Role already exists: " + roleName);
+            throw new ResourceAlreadyExistsException("Role already exists: " + roleName);
         }
         Role role = Role.builder()
                 .name(roleName)
@@ -33,11 +33,11 @@ public class RoleService {
     // Delete a role
     public void deleteRole(Long roleId) {
         Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new BusinessException("Role not found with id: " + roleId));
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found with id: " + roleId));
 
         if (role.isSystemDefined()) {
             log.error("Cannot delete system-defined role: {}", role.getName());
-            throw new BusinessException("Cannot delete system-defined role: " + role.getName());
+            throw new BusinessRuleViolationException("Cannot delete system-defined role: " + role.getName());
         }
 
         roleRepository.delete(role);
@@ -50,6 +50,6 @@ public class RoleService {
 
     public Role getRoleByName(String name) {
         return roleRepository.findByName(name)
-                .orElseThrow(() -> new BusinessException("Role not found: " + name));
+                .orElseThrow(() -> new ResourceNotFoundException("Role not found: " + name));
     }
 }
