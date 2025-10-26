@@ -1,13 +1,13 @@
-package com.collabrix.collabrix_exception_service;
+package com.collabrix.exception;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class CollabrixExceptionServiceApplication {
+public class ExceptionServiceApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CollabrixExceptionServiceApplication.class, args);
+		SpringApplication.run(ExceptionServiceApplication.class, args);
 	}
 
 }

@@ -1,10 +1,10 @@
-package com.collabrix.collabrix_exception_service;
+package com.collabrix.exception;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class CollabrixExceptionServiceApplicationTests {
+class ExceptionServiceApplicationTests {
 
 	@Test
 	void contextLoads() {
