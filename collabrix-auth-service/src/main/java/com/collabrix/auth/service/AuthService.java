@@ -8,17 +8,15 @@ import com.collabrix.auth.entity.User;
 import com.collabrix.auth.repository.UserRepository;
 import com.collabrix.auth.security.JwtTokenProvider;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 /**
- * High-level authentication operations:
- * - register
- * - login (authenticate + generate tokens)
- * - refresh tokens using stored refresh token
+ * Service responsible for all authentication operations:
+ * - user registration
+ * - login and token generation
+ * - refresh token flow
  */
 @Service
 @Slf4j
@@ -45,48 +43,58 @@ public class AuthService {
         this.userRepository = userRepository;
     }
 
-    public User register(RegisterRequest req) {
-        // Delegate to UserService
-        return userService.register(req);
+    /**
+     * Registers a new user by delegating to UserService.
+     */
+    public User register(RegisterRequest request) {
+        log.info("Registering new user: {}", request.getUsername());
+        return userService.register(request);
     }
 
-    public JwtResponse login(LoginRequest req) {
-        log.info("Attempting login for: {}", req.getUsername());
+    /**
+     * Authenticates a user and generates JWT access + refresh tokens.
+     */
+    public JwtResponse login(LoginRequest request) {
+        log.info("Attempting login for user: {}", request.getUsername());
+
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword())
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
-        // If authentication fails, exception is thrown by AuthenticationManager
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        var custom = (CustomUserDetails) userDetails;
 
-        String accessToken = tokenProvider.generateAccessToken(custom);
-        // create and store refresh token in DB
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(custom.getUsername());
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        log.info("User {} authenticated successfully", custom.getUsername());
+        String accessToken = tokenProvider.generateAccessToken(userDetails);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
+
+        log.info("User {} authenticated successfully", userDetails.getUsername());
+
         return new JwtResponse(accessToken, refreshToken.getToken(), "Bearer");
     }
 
+    /**
+     * Refreshes the access token using a valid refresh token.
+     * Rotates refresh token for security.
+     */
     public JwtResponse refreshToken(String refreshTokenStr) {
-        log.info("Attempting refresh token flow");
-        var opt = refreshTokenService.findByToken(refreshTokenStr);
-        if (opt.isEmpty()) {
-            throw new BadCredentialsException("Invalid refresh token");
-        }
-        RefreshToken refreshToken = opt.get();
+        log.info("Refreshing access token using refresh token");
+
+        RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenStr)
+                .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
+
         if (refreshTokenService.isExpired(refreshToken)) {
-            refreshTokenService.deleteByUser(refreshToken.getUser()); // revoke
-            throw new BadCredentialsException("Refresh token expired, please login again");
+            refreshTokenService.deleteByUser(refreshToken.getUser());
+            throw new BadCredentialsException("Refresh token expired. Please login again.");
         }
 
-        CustomUserDetails cud = new CustomUserDetails(refreshToken.getUser());
-        String newAccessToken = tokenProvider.generateAccessToken(cud);
+        CustomUserDetails userDetails = new CustomUserDetails(refreshToken.getUser());
+        String newAccessToken = tokenProvider.generateAccessToken(userDetails);
 
-        // Optionally rotate refresh token: delete old and create new
+        // Rotate refresh token: delete old and issue a new one
         refreshTokenService.deleteByUser(refreshToken.getUser());
-        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(cud.getUsername());
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
 
-        log.info("Refresh token rotated for user {}", cud.getUsername());
+        log.info("Refresh token rotated successfully for user {}", userDetails.getUsername());
+
         return new JwtResponse(newAccessToken, newRefreshToken.getToken(), "Bearer");
     }
 }

@@ -4,13 +4,15 @@ import com.collabrix.auth.entity.Role;
 import com.collabrix.auth.entity.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Wraps our User into Spring Security's UserDetails.
+ * Wraps our User entity into Spring Security UserDetails.
  */
 @Getter
 public class CustomUserDetails implements UserDetails {
@@ -32,7 +34,7 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
-                .map(role -> (GrantedAuthority) role::getName)
+                .map(role -> new SimpleGrantedAuthority(role.getName()))
                 .collect(Collectors.toSet());
     }
 
@@ -54,12 +56,9 @@ public class CustomUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() { return active; }
 
-    /**
-     * Small helper to get string UUID (avoid exposing UUID directly everywhere).
-     */
     public String getIdAsString() { return id.toString(); }
 
-    // Simple wrapper class because lombok/getters can't be used on UUID when customizing
+    @Getter
     public static class UUIDConverter {
         private final java.util.UUID uuid;
         public UUIDConverter(java.util.UUID uuid) { this.uuid = uuid; }
