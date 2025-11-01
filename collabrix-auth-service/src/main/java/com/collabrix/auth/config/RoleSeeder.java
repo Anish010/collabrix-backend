@@ -1,11 +1,14 @@
 package com.collabrix.auth.config;
 
-import com.collabrix.auth.entity.Role;
+import com.collabrix.auth.dto.RoleResponse;
 import com.collabrix.auth.service.RoleService;
+import com.collabrix.common.libraries.exceptions.ResourceNotFoundException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -15,26 +18,27 @@ public class RoleSeeder {
     private final RoleService roleService;
 
     /**
-     * Seed system-defined roles at application startup.
+     * Seed essential system-defined roles on startup.
      */
     @PostConstruct
     public void seedRoles() {
-        log.info("Seeding system-defined roles...");
+        log.info("🔁 Checking and seeding system-defined roles...");
 
-        createRoleIfMissing("GUEST");
-        createRoleIfMissing("ADMIN");
+        List<String> rolesToSeed = List.of("ROLE_GUEST", "ROLE_ADMIN");
 
-        log.info("System roles verified or created.");
+        rolesToSeed.forEach(roleName -> {
+            try {
+                roleService.getRoleByName(roleName);
+                log.debug("✅ Role '{}' already exists.", roleName);
+            } catch (ResourceNotFoundException e) {
+                RoleResponse role = roleService.createRole(roleName, true);
+                log.info("🆕 Created missing system role '{}'", role.getName());
+            } catch (Exception e) {
+                log.error("❌ Unexpected error while verifying role '{}': {}", roleName, e.getMessage());
+            }
+        });
+
+        log.info("✅ Role seeding complete.");
     }
 
-    private void createRoleIfMissing(String roleName) {
-        try {
-            roleService.getRoleByName(roleName);
-            log.info("Role '{}' already exists", roleName);
-        } catch (Exception e) {
-            // If not found, create it as systemDefined
-            Role role = roleService.createRole(roleName, true);
-            log.info("Created missing system role '{}'", role.getName());
-        }
-    }
 }

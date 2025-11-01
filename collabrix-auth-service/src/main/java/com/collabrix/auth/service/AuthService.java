@@ -4,9 +4,10 @@ import com.collabrix.auth.dto.JwtResponse;
 import com.collabrix.auth.dto.LoginRequest;
 import com.collabrix.auth.dto.RegisterRequest;
 import com.collabrix.auth.entity.RefreshToken;
+import com.collabrix.auth.entity.Role;
 import com.collabrix.auth.entity.User;
-import com.collabrix.auth.repository.UserRepository;
 import com.collabrix.auth.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.Authentication;
@@ -18,83 +19,96 @@ import org.springframework.stereotype.Service;
  * - login and token generation
  * - refresh token flow
  */
-@Service
 @Slf4j
+@Service
+@RequiredArgsConstructor
 public class AuthService {
 
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService userDetailsService;
-    private final JwtTokenProvider tokenProvider;
-    private final RefreshTokenService refreshTokenService;
+    private final JwtTokenProvider jwtTokenProvider;
     private final UserService userService;
-    private final UserRepository userRepository;
-
-    public AuthService(AuthenticationManager authenticationManager,
-                       CustomUserDetailsService userDetailsService,
-                       JwtTokenProvider tokenProvider,
-                       RefreshTokenService refreshTokenService,
-                       UserService userService,
-                       UserRepository userRepository) {
-        this.authenticationManager = authenticationManager;
-        this.userDetailsService = userDetailsService;
-        this.tokenProvider = tokenProvider;
-        this.refreshTokenService = refreshTokenService;
-        this.userService = userService;
-        this.userRepository = userRepository;
-    }
+    private final RefreshTokenService refreshTokenService;
 
     /**
-     * Registers a new user by delegating to UserService.
+     * Register a new user.
      */
-    public User register(RegisterRequest request) {
-        log.info("Registering new user: {}", request.getUsername());
-        return userService.register(request);
+    public JwtResponse register(RegisterRequest request) {
+        log.info("Registering user: {}", request.getUsername());
+
+        User user = userService.register(request);
+
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getUsername());
+
+        return JwtResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .tokenType("Bearer")
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRoles().stream().findFirst().map(Role::getName).orElse("ROLE_GUEST"))
+                .build();
     }
 
     /**
-     * Authenticates a user and generates JWT access + refresh tokens.
+     * Login user and generate access + refresh tokens.
      */
     public JwtResponse login(LoginRequest request) {
-        log.info("Attempting login for user: {}", request.getUsername());
+        log.info("Authenticating user: {}", request.getUsername());
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-
-        String accessToken = tokenProvider.generateAccessToken(userDetails);
+        String accessToken = jwtTokenProvider.generateAccessToken(userDetails);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
 
-        log.info("User {} authenticated successfully", userDetails.getUsername());
-
-        return new JwtResponse(accessToken, refreshToken.getToken(), "Bearer");
+        return JwtResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken.getToken())
+                .tokenType("Bearer")
+                .username(userDetails.getUsername())
+                .email(userDetails.getUser().getEmail()) // ✅ FIXED
+                .role(
+                        userDetails.getUser()
+                                .getRoles()
+                                .stream()
+                                .findFirst()
+                                .map(Role::getName)
+                                .orElse("ROLE_GUEST")
+                )
+                .build();
     }
 
-    /**
-     * Refreshes the access token using a valid refresh token.
-     * Rotates refresh token for security.
-     */
-    public JwtResponse refreshToken(String refreshTokenStr) {
-        log.info("Refreshing access token using refresh token");
 
-        RefreshToken refreshToken = refreshTokenService.findByToken(refreshTokenStr)
+    /**
+     * Refresh access token using a valid refresh token.
+     */
+    public JwtResponse refreshToken(String oldRefreshToken) {
+        RefreshToken refreshToken = refreshTokenService.findByToken(oldRefreshToken)
                 .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
 
         if (refreshTokenService.isExpired(refreshToken)) {
             refreshTokenService.deleteByUser(refreshToken.getUser());
-            throw new BadCredentialsException("Refresh token expired. Please login again.");
+            throw new BadCredentialsException("Refresh token expired, please login again.");
         }
 
         CustomUserDetails userDetails = new CustomUserDetails(refreshToken.getUser());
-        String newAccessToken = tokenProvider.generateAccessToken(userDetails);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(userDetails);
 
-        // Rotate refresh token: delete old and issue a new one
         refreshTokenService.deleteByUser(refreshToken.getUser());
         RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(userDetails.getUsername());
 
-        log.info("Refresh token rotated successfully for user {}", userDetails.getUsername());
-
-        return new JwtResponse(newAccessToken, newRefreshToken.getToken(), "Bearer");
+        return JwtResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken.getToken())
+                .tokenType("Bearer")
+                .username(userDetails.getUsername())
+                .email(userDetails.getUser().getEmail())
+                .role(userDetails.getUser().getRoles().stream().findFirst().map(Role::getName).orElse("GUEST"))
+                .build();
     }
 }
