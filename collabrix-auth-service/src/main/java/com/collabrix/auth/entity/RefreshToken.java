@@ -6,9 +6,7 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * Refresh token stored in DB so we can revoke single tokens if necessary.
- */
+
 @Entity
 @Table(name = "refresh_tokens")
 @Data
@@ -16,17 +14,18 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 public class RefreshToken {
+
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "user_id")
-    private User user;
-
-    @Column(nullable = false, unique = true, length = 512)
+    @Column(nullable = false, unique = true)
     private String token;
 
     @Column(nullable = false)
     private Instant expiryDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

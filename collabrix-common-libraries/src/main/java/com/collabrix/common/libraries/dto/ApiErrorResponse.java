@@ -1,14 +1,15 @@
 package com.collabrix.common.libraries.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Data;
+import java.time.LocalDateTime;
 
-import java.time.Instant;
-
-@Getter
+@Data
 @AllArgsConstructor
 public class ApiErrorResponse {
-    private final Instant timestamp;
-    private final String message;
-    private final String serviceName;
+    private LocalDateTime timestamp;
+    private int status;
+    private String error;
+    private String message;
+    private String service;
 }

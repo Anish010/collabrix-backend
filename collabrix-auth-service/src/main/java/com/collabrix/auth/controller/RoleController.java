@@ -2,15 +2,14 @@ package com.collabrix.auth.controller;
 
 import com.collabrix.auth.dto.RoleRequest;
 import com.collabrix.auth.dto.RoleResponse;
-import com.collabrix.auth.entity.Role;
 import com.collabrix.auth.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -20,34 +19,46 @@ public class RoleController {
 
     private final RoleService roleService;
 
+    /**
+     * Create a new role (Admin only)
+     */
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RoleResponse> createRole(@RequestBody RoleRequest request) {
-        Role role = roleService.createRole(request.getName(), false);
+        RoleResponse role = roleService.createRole(request.getName(), false);
         log.info("Role created via API: {}", role.getName());
-        return ResponseEntity.ok(toResponse(role));
+        return ResponseEntity.ok(role);
     }
 
+    /**
+     * Soft delete a role (marks deleted=true)
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteRole(@PathVariable Long id) {
-        roleService.deleteRole(id);
-        log.info("Role deleted via API: id={}", id);
-        return ResponseEntity.ok("Role deleted successfully");
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> softDeleteRole(@PathVariable Long id) {
+        roleService.softDeleteRole(id);
+        log.info("Role soft deleted via API: id={}", id);
+        return ResponseEntity.ok("Role soft-deleted successfully");
     }
 
+    /**
+     * Hard delete a role (permanent removal)
+     */
+    @DeleteMapping("/hard/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> hardDeleteRole(@PathVariable Long id) {
+        roleService.hardDeleteRole(id);
+        log.warn("⚠️ Role permanently deleted via API: id={}", id);
+        return ResponseEntity.ok("Role permanently deleted");
+    }
+
+    /**
+     * Get all roles — public access (e.g., to display available roles)
+     */
     @GetMapping
     public ResponseEntity<List<RoleResponse>> getAllRoles() {
-        List<RoleResponse> roles = roleService.getAllRoles()
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        List<RoleResponse> roles = roleService.getAllRoles();
         return ResponseEntity.ok(roles);
     }
 
-    private RoleResponse toResponse(Role role) {
-        return RoleResponse.builder()
-                .id(role.getId())
-                .name(role.getName())
-                .systemDefined(role.isSystemDefined())
-                .build();
-    }
 }

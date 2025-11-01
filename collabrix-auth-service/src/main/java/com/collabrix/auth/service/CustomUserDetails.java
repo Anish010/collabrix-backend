@@ -22,6 +22,8 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final Set<Role> roles;
     private final boolean active;
+    private final String email;
+    private final User user;
 
     public CustomUserDetails(User user) {
         this.id = new UUIDConverter(user.getId());
@@ -29,6 +31,8 @@ public class CustomUserDetails implements UserDetails {
         this.password = user.getPassword();
         this.roles = user.getRoles();
         this.active = user.isActive();
+        this.email = user.getEmail();
+        this.user = user;
     }
 
     @Override
@@ -37,6 +41,7 @@ public class CustomUserDetails implements UserDetails {
                 .map(role -> new SimpleGrantedAuthority(role.getName()))
                 .collect(Collectors.toSet());
     }
+
 
     @Override
     public String getPassword() { return password; }
