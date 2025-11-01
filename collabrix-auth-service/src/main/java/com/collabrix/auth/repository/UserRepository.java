@@ -15,6 +15,7 @@ import java.util.UUID;
  * Provides CRUD operations and custom finder methods.
  * All methods return Optional to handle absence of a record safely.
  */
+
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
 
@@ -33,5 +34,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * @return Optional containing User if found, empty otherwise
      */
     Optional<User> findByEmail(String email);
+    
+    boolean existsByUsername(String username);
+
+    boolean existsByEmail(String email);
 
 }

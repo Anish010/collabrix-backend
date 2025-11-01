@@ -17,6 +17,7 @@ public class UserResponse {
     private String email;
     private String firstName;
     private String lastName;
+    private String countryCode;
     private String contactNo;
     private String organization;
     private boolean active;
