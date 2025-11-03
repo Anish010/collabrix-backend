@@ -1,6 +1,6 @@
 package com.collabrix.auth.config;
 
-import com.collabrix.auth.service.KeycloakAdminService;
+import com.collabrix.auth.service.KeycloakRoleService;
 import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -11,23 +11,24 @@ import java.util.List;
 
 /**
  * Seeds default roles in Keycloak on application startup.
+ * Updated to use renamed KeycloakRoleService.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RoleSeeder {
 
-    private final KeycloakAdminService keycloakAdminService;
+    private final KeycloakRoleService keycloakRoleService;
 
     @PostConstruct
     public void seedRoles() {
         log.info("🌱 Seeding default roles in Keycloak...");
 
-        List<String> defaultRoles = List.of("ROLE_USER", "ROLE_ADMIN", "ROLE_MANAGER");
+        List<String> defaultRoles = List.of("ROLE_GUEST", "ROLE_ADMIN", "ROLE_MANAGER");
 
         for (String roleName : defaultRoles) {
             try {
-                keycloakAdminService.createRole(roleName, "Default " + roleName);
+                keycloakRoleService.createRole(roleName, "Default " + roleName);
                 log.info("✅ Created role: {}", roleName);
             } catch (ResourceAlreadyExistsException e) {
                 log.debug("Role already exists: {}", roleName);

@@ -1,7 +1,7 @@
 package com.collabrix.auth.controller;
 
 import com.collabrix.auth.dto.RoleResponse;
-import com.collabrix.auth.service.KeycloakAdminService;
+import com.collabrix.auth.service.KeycloakRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +13,7 @@ import java.util.Map;
 
 /**
  * Role management endpoints (Admin only).
+ * Updated to use renamed KeycloakRoleService.
  */
 @Slf4j
 @RestController
@@ -20,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class RoleController {
 
-    private final KeycloakAdminService keycloakAdminService;
+    private final KeycloakRoleService keycloakRoleService;
 
     /**
      * Get all roles
@@ -29,7 +30,7 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<RoleResponse>> getAllRoles() {
         log.info("📋 Fetching all roles");
-        List<RoleResponse> roles = keycloakAdminService.getAllRoles();
+        List<RoleResponse> roles = keycloakRoleService.getAllRoles();
         return ResponseEntity.ok(roles);
     }
 
@@ -40,7 +41,7 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RoleResponse> getRoleByName(@PathVariable String roleName) {
         log.info("🎭 Fetching role: {}", roleName);
-        RoleResponse role = keycloakAdminService.getRoleByName(roleName);
+        RoleResponse role = keycloakRoleService.getRoleByName(roleName);
         return ResponseEntity.ok(role);
     }
 
@@ -53,7 +54,7 @@ public class RoleController {
         log.info("➕ Creating role: {}", request.get("name"));
         String roleName = request.get("name");
         String description = request.get("description");
-        RoleResponse role = keycloakAdminService.createRole(roleName, description);
+        RoleResponse role = keycloakRoleService.createRole(roleName, description);
         return ResponseEntity.ok(role);
     }
 
@@ -67,7 +68,7 @@ public class RoleController {
             @RequestBody Map<String, String> request) {
         log.info("✏️ Updating role: {}", roleName);
         String newDescription = request.get("description");
-        RoleResponse role = keycloakAdminService.updateRole(roleName, newDescription);
+        RoleResponse role = keycloakRoleService.updateRole(roleName, newDescription);
         return ResponseEntity.ok(role);
     }
 
@@ -78,7 +79,7 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> deleteRole(@PathVariable String roleName) {
         log.info("🗑️ Deleting role: {}", roleName);
-        keycloakAdminService.deleteRole(roleName);
+        keycloakRoleService.deleteRole(roleName);
         return ResponseEntity.ok(Map.of("message", "Role deleted successfully"));
     }
 }

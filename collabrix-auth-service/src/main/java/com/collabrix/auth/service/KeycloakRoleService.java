@@ -17,12 +17,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Service for Keycloak administrative operations (roles, realm management).
+ * Service for Keycloak role management operations.
+ * Renamed from KeycloakAdminService to better reflect its purpose.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KeycloakAdminService {
+public class KeycloakRoleService {
 
     private final Keycloak keycloakAdmin;
 
@@ -142,10 +143,7 @@ public class KeycloakAdminService {
         }
     }
 
-    // ============================================
     // Helper Methods
-    // ============================================
-
     private RoleResponse mapToRoleResponse(RoleRepresentation role) {
         return RoleResponse.builder()
                 .id(role.getId())

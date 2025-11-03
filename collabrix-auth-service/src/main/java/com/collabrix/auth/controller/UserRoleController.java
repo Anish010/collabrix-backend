@@ -4,38 +4,26 @@ import com.collabrix.auth.dto.UserResponse;
 import com.collabrix.auth.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 /**
- * User management endpoints (protected by Keycloak JWT).
+ * User-Role assignment endpoints (Admin only).
+ * User profile management is moved to user-service.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class UserController {
+public class UserRoleController {
 
     private final KeycloakUserService keycloakUserService;
 
     /**
-     * Get all users (Admin only)
-     */
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        log.info("📋 Fetching all users");
-        List<UserResponse> users = keycloakUserService.getAllUsers();
-        return ResponseEntity.ok(users);
-    }
-
-    /**
-     * Get user by ID
+     * Get user by ID (basic auth info only)
      */
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
@@ -43,30 +31,6 @@ public class UserController {
         log.info("👤 Fetching user: {}", userId);
         UserResponse user = keycloakUserService.getUserById(userId);
         return ResponseEntity.ok(user);
-    }
-
-    /**
-     * Update user
-     */
-    @PutMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
-    public ResponseEntity<UserResponse> updateUser(
-            @PathVariable String userId,
-            @RequestBody UserRepresentation userUpdate) {
-        log.info("✏️ Updating user: {}", userId);
-        UserResponse user = keycloakUserService.updateUser(userId, userUpdate);
-        return ResponseEntity.ok(user);
-    }
-
-    /**
-     * Delete user (Admin only)
-     */
-    @DeleteMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String userId) {
-        log.info("🗑️ Deleting user: {}", userId);
-        keycloakUserService.deleteUser(userId);
-        return ResponseEntity.ok(Map.of("message", "User deleted successfully"));
     }
 
     /**
@@ -94,5 +58,27 @@ public class UserController {
         log.info("🎭 Removing role from user: {}", userId);
         UserResponse user = keycloakUserService.removeRoleFromUser(userId, roleName);
         return ResponseEntity.ok(user);
+    }
+
+    /**
+     * Get user's roles
+     */
+    @GetMapping("/{userId}/roles")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
+    public ResponseEntity<UserResponse> getUserRoles(@PathVariable String userId) {
+        log.info("🎭 Fetching roles for user: {}", userId);
+        UserResponse user = keycloakUserService.getUserById(userId);
+        return ResponseEntity.ok(user);
+    }
+
+    /**
+     * Soft delete user (Admin only)
+     */
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteUser(@PathVariable String userId) {
+        log.info("🗑️ Soft deleting user: {}", userId);
+        keycloakUserService.deleteUser(userId);
+        return ResponseEntity.ok(Map.of("message", "User soft deleted successfully"));
     }
 }

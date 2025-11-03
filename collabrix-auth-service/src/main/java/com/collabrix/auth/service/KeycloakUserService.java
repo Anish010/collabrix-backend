@@ -2,6 +2,10 @@ package com.collabrix.auth.service;
 
 import com.collabrix.auth.dto.RegisterRequest;
 import com.collabrix.auth.dto.UserResponse;
+import com.collabrix.auth.kafka.EventPublisher;
+import com.collabrix.auth.kafka.events.UserDeletedEvent;
+import com.collabrix.auth.kafka.events.UserRegisteredEvent;
+import com.collabrix.auth.kafka.events.UserRoleChangedEvent;
 import com.collabrix.common.libraries.exceptions.KeycloakException;
 import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
 import com.collabrix.common.libraries.exceptions.ResourceNotFoundException;
@@ -15,6 +19,8 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import jakarta.ws.rs.core.Response;
@@ -22,7 +28,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Service for Keycloak user management operations.
+ * Service for Keycloak user management - ONLY authentication-related operations.
+ * Extended profile management is handled by user-service.
  */
 @Slf4j
 @Service
@@ -30,15 +37,17 @@ import java.util.stream.Collectors;
 public class KeycloakUserService {
 
     private final Keycloak keycloakAdmin;
+    private final EventPublisher eventPublisher;
 
     @Value("${keycloak.realm}")
     private String realm;
 
     /**
      * Register a new user in Keycloak
+     * Extended profile fields are published as event for user-service
      */
     public UserResponse registerUser(RegisterRequest request) {
-        log.info("Registering new user: {}", request.getUsername());
+        log.info("🔒 Registering new user: {}", request.getUsername());
 
         RealmResource realmResource = keycloakAdmin.realm(realm);
         UsersResource usersResource = realmResource.users();
@@ -55,39 +64,31 @@ public class KeycloakUserService {
             throw new ResourceAlreadyExistsException("Email already exists: " + request.getEmail());
         }
 
-        // Create user representation
+        // Create user representation with ONLY auth fields
         UserRepresentation user = new UserRepresentation();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
         user.setEnabled(true);
-        user.setEmailVerified(false);
+        user.setEmailVerified(true); // Will be email verified automatically
 
-        // Add custom attributes (countryCode, contactNo, organization)
-        Map<String, List<String>> attributes = new HashMap<>();
-        if (request.getCountryCode() != null) {
-            attributes.put("countryCode", Collections.singletonList(request.getCountryCode()));
-        }
-        if (request.getContactNo() != null) {
-            attributes.put("contactNo", Collections.singletonList(request.getContactNo()));
-        }
-        if (request.getOrganization() != null) {
-            attributes.put("organization", Collections.singletonList(request.getOrganization()));
-        }
-        user.setAttributes(attributes);
 
         // Create user in Keycloak
         try (Response response = usersResource.create(user)) {
             if (response.getStatus() == 201) {
                 String userId = getCreatedId(response);
-                log.info("✅ User created with ID: {}", userId);
+                log.info("✅ User created in Keycloak with ID: {}", userId);
 
                 // Set password
                 setUserPassword(usersResource, userId, request.getPassword());
 
                 // Assign default role (ROLE_GUEST)
                 assignDefaultRole(realmResource, userId);
+
+                // Publish UserRegisteredEvent for other services
+                publishUserRegisteredEvent(userId, request);
+
 
                 return getUserById(userId);
             } else {
@@ -103,7 +104,29 @@ public class KeycloakUserService {
     }
 
     /**
-     * Get user by ID
+     * Publish UserRegisteredEvent to Kafka
+     */
+    private void publishUserRegisteredEvent(String userId, RegisterRequest request) {
+        UserRegisteredEvent event = UserRegisteredEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .eventType("USER_REGISTERED")
+                .timestamp(System.currentTimeMillis())
+                .keycloakUserId(userId)
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .countryCode(request.getCountryCode())
+                .contactNo(request.getContactNo())
+                .organization(request.getOrganization())
+                .build();
+
+        eventPublisher.publishUserRegisteredEvent(event);
+        log.info("📤 UserRegisteredEvent published for user: {}", request.getUsername());
+    }
+
+    /**
+     * Get user by ID (simplified - basic auth info only)
      */
     public UserResponse getUserById(String userId) {
         log.debug("Fetching user by ID: {}", userId);
@@ -127,7 +150,7 @@ public class KeycloakUserService {
     }
 
     /**
-     * Get all users
+     * Get all users (Admin only)
      */
     public List<UserResponse> getAllUsers() {
         log.debug("Fetching all users");
@@ -160,67 +183,7 @@ public class KeycloakUserService {
     }
 
     /**
-     * Update user
-     */
-    public UserResponse updateUser(String userId, UserRepresentation userUpdate) {
-        log.info("Updating user: {}", userId);
-
-        try {
-            RealmResource realmResource = keycloakAdmin.realm(realm);
-            UserResource userResource = realmResource.users().get(userId);
-            UserRepresentation existingUser = userResource.toRepresentation();
-
-            // Check if user is active
-            if (!existingUser.isEnabled()) {
-                throw new KeycloakException("Cannot update an inactive user");
-            }
-
-            // Update basic fields
-            if (userUpdate.getFirstName() != null) {
-                existingUser.setFirstName(userUpdate.getFirstName());
-            }
-            if (userUpdate.getLastName() != null) {
-                existingUser.setLastName(userUpdate.getLastName());
-            }
-            if (userUpdate.getEmail() != null) {
-                existingUser.setEmail(userUpdate.getEmail());
-            }
-
-            // Update custom attributes
-            Map<String, List<String>> attributes = existingUser.getAttributes();
-            if (attributes == null) {
-                attributes = new HashMap<>();
-            }
-
-            if (userUpdate.getAttributes() != null) {
-                // Update countryCode
-                if (userUpdate.getAttributes().containsKey("countryCode")) {
-                    attributes.put("countryCode", userUpdate.getAttributes().get("countryCode"));
-                }
-                // Update contactNo
-                if (userUpdate.getAttributes().containsKey("contactNo")) {
-                    attributes.put("contactNo", userUpdate.getAttributes().get("contactNo"));
-                }
-                // Update organization
-                if (userUpdate.getAttributes().containsKey("organization")) {
-                    attributes.put("organization", userUpdate.getAttributes().get("organization"));
-                }
-            }
-
-            existingUser.setAttributes(attributes);
-            userResource.update(existingUser);
-            log.info("✅ User updated successfully: {}", userId);
-
-            return getUserById(userId);
-
-        } catch (Exception e) {
-            log.error("❌ Error updating user: {}", e.getMessage());
-            throw new KeycloakException("Error updating user: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Soft delete user (disable user)
+     * Delete user (soft delete - disable user)
      */
     public void deleteUser(String userId) {
         log.warn("Soft deleting user: {}", userId);
@@ -234,7 +197,10 @@ public class KeycloakUserService {
             user.setEnabled(false);
             userResource.update(user);
 
-            log.info("🟠 User soft deleted (disabled): {}", userId);
+            log.info("🟡 User soft deleted (disabled): {}", userId);
+
+            // Publish UserDeletedEvent
+            publishUserDeletedEvent(userId, user.getUsername());
 
         } catch (Exception e) {
             log.error("❌ Error soft deleting user: {}", e.getMessage());
@@ -243,20 +209,22 @@ public class KeycloakUserService {
     }
 
     /**
-     * Hard delete user (permanently delete from Keycloak)
+     * Publish UserDeletedEvent to Kafka
      */
-    public void hardDeleteUser(String userId) {
-        log.error("Hard deleting user: {}", userId);
+    private void publishUserDeletedEvent(String userId, String username) {
+        String deletedBy = getCurrentUsername();
 
-        try {
-            RealmResource realmResource = keycloakAdmin.realm(realm);
-            realmResource.users().delete(userId);
-            log.warn("⚠️ User permanently deleted: {}", userId);
+        UserDeletedEvent event = UserDeletedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .eventType("USER_DELETED")
+                .timestamp(System.currentTimeMillis())
+                .keycloakUserId(userId)
+                .username(username)
+                .deletedBy(deletedBy)
+                .build();
 
-        } catch (Exception e) {
-            log.error("❌ Error hard deleting user: {}", e.getMessage());
-            throw new KeycloakException("Error hard deleting user: " + e.getMessage());
-        }
+        eventPublisher.publishUserDeletedEvent(event);
+        log.info("📤 UserDeletedEvent published for user: {}", username);
     }
 
     /**
@@ -268,6 +236,7 @@ public class KeycloakUserService {
         try {
             RealmResource realmResource = keycloakAdmin.realm(realm);
             UserResource userResource = realmResource.users().get(userId);
+            UserRepresentation user = userResource.toRepresentation();
 
             // Check if user already has the role
             List<RoleRepresentation> existingRoles = userResource.roles().realmLevel().listEffective();
@@ -284,6 +253,9 @@ public class KeycloakUserService {
             // Assign role
             userResource.roles().realmLevel().add(Collections.singletonList(role));
             log.info("✅ Role '{}' assigned to user: {}", roleName, userId);
+
+            // Publish UserRoleChangedEvent
+            publishUserRoleChangedEvent(userId, user.getUsername(), roleName, "ASSIGNED");
 
             return getUserById(userId);
 
@@ -304,6 +276,7 @@ public class KeycloakUserService {
         try {
             RealmResource realmResource = keycloakAdmin.realm(realm);
             UserResource userResource = realmResource.users().get(userId);
+            UserRepresentation user = userResource.toRepresentation();
 
             // Get role
             RoleRepresentation role = realmResource.roles().get(roleName).toRepresentation();
@@ -312,12 +285,36 @@ public class KeycloakUserService {
             userResource.roles().realmLevel().remove(Collections.singletonList(role));
             log.info("✅ Role '{}' removed from user: {}", roleName, userId);
 
+            // Publish UserRoleChangedEvent
+            publishUserRoleChangedEvent(userId, user.getUsername(), roleName, "REMOVED");
+
             return getUserById(userId);
 
         } catch (Exception e) {
             log.error("❌ Error removing role: {}", e.getMessage());
             throw new KeycloakException("Error removing role: " + e.getMessage());
         }
+    }
+
+    /**
+     * Publish UserRoleChangedEvent to Kafka
+     */
+    private void publishUserRoleChangedEvent(String userId, String username, String roleName, String action) {
+        String changedBy = getCurrentUsername();
+
+        UserRoleChangedEvent event = UserRoleChangedEvent.builder()
+                .eventId(UUID.randomUUID().toString())
+                .eventType("USER_ROLE_CHANGED")
+                .timestamp(System.currentTimeMillis())
+                .keycloakUserId(userId)
+                .username(username)
+                .roleName(roleName)
+                .action(action)
+                .changedBy(changedBy)
+                .build();
+
+        eventPublisher.publishUserRoleChangedEvent(event);
+        log.info("📤 UserRoleChangedEvent published for user: {} (role: {}, action: {})", username, roleName, action);
     }
 
     // ============================================
@@ -352,34 +349,26 @@ public class KeycloakUserService {
         throw new KeycloakException("Failed to extract user ID from response");
     }
 
-    private UserResponse mapToUserResponse(UserRepresentation user, List<String> roles) {
-        // Extract custom attributes
-        Map<String, List<String>> attributes = user.getAttributes();
-        String countryCode = null;
-        String contactNo = null;
-        String organization = null;
-
-        if (attributes != null) {
-            countryCode = attributes.containsKey("countryCode")
-                    ? attributes.get("countryCode").get(0)
-                    : null;
-            contactNo = attributes.containsKey("contactNo")
-                    ? attributes.get("contactNo").get(0)
-                    : null;
-            organization = attributes.containsKey("organization")
-                    ? attributes.get("organization").get(0)
-                    : null;
+    private String getCurrentUsername() {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication != null && authentication.isAuthenticated()) {
+                return authentication.getName();
+            }
+        } catch (Exception e) {
+            log.warn("Could not get current username: {}", e.getMessage());
         }
+        return "SYSTEM";
+    }
 
+    /**
+     * Map to simplified UserResponse (NO extended profile fields)
+     */
+    private UserResponse mapToUserResponse(UserRepresentation user, List<String> roles) {
         return UserResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .countryCode(countryCode)
-                .contactNo(contactNo)
-                .organization(organization)
                 .active(user.isEnabled())
                 .emailVerified(user.isEmailVerified())
                 .createdTimestamp(user.getCreatedTimestamp())

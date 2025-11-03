@@ -5,10 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication(scanBasePackages = "com.collabrix")
-@EnableJpaAuditing
 public class CollabrixAuthServiceApplication {
 
     private static final Logger logger = LoggerFactory.getLogger(CollabrixAuthServiceApplication.class);
