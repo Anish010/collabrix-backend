@@ -13,14 +13,22 @@ public class CollabrixAuthServiceApplication {
 
     private static final Logger logger = LoggerFactory.getLogger(CollabrixAuthServiceApplication.class);
 
-    Dotenv dotenv = Dotenv.configure()
-            .systemProperties()   // <-- important
-            .ignoreIfMissing()
-            .load();
-
+    static {
+        Dotenv dotenv = Dotenv.configure()
+                .filename(".env")
+                .ignoreIfMissing()
+                .load();
+        dotenv.entries().forEach(entry -> {
+            if (System.getProperty(entry.getKey()) == null) {
+                System.setProperty(entry.getKey(), entry.getValue());
+            }
+        });
+    }
 	public static void main(String[] args) {
 		SpringApplication.run(CollabrixAuthServiceApplication.class, args);
         logger.info("Auth Service Started Successfully!");
 	}
 
 }
+
+

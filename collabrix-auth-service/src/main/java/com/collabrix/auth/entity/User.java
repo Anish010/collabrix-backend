@@ -25,6 +25,10 @@ public class User implements UserDetails {
     @Column(nullable = false, updatable = false)
     private UUID id;
 
+    @Id
+    @Column(name = "keycloak_user_id", nullable = false, unique = true)
+    private String keycloakUserId;
+
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 

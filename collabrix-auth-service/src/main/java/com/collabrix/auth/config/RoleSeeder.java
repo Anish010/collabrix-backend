@@ -1,8 +1,7 @@
 package com.collabrix.auth.config;
 
-import com.collabrix.auth.dto.RoleResponse;
-import com.collabrix.auth.service.RoleService;
-import com.collabrix.common.libraries.exceptions.ResourceNotFoundException;
+import com.collabrix.auth.service.KeycloakAdminService;
+import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,35 +9,33 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+/**
+ * Seeds default roles in Keycloak on application startup.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RoleSeeder {
 
-    private final RoleService roleService;
+    private final KeycloakAdminService keycloakAdminService;
 
-    /**
-     * Seed essential system-defined roles on startup.
-     */
     @PostConstruct
     public void seedRoles() {
-        log.info("🔁 Checking and seeding system-defined roles...");
+        log.info("🌱 Seeding default roles in Keycloak...");
 
-        List<String> rolesToSeed = List.of("ROLE_GUEST", "ROLE_ADMIN");
+        List<String> defaultRoles = List.of("ROLE_USER", "ROLE_ADMIN", "ROLE_MANAGER");
 
-        rolesToSeed.forEach(roleName -> {
+        for (String roleName : defaultRoles) {
             try {
-                roleService.getRoleByName(roleName);
-                log.debug("✅ Role '{}' already exists.", roleName);
-            } catch (ResourceNotFoundException e) {
-                RoleResponse role = roleService.createRole(roleName, true);
-                log.info("🆕 Created missing system role '{}'", role.getName());
+                keycloakAdminService.createRole(roleName, "Default " + roleName);
+                log.info("✅ Created role: {}", roleName);
+            } catch (ResourceAlreadyExistsException e) {
+                log.debug("Role already exists: {}", roleName);
             } catch (Exception e) {
-                log.error("❌ Unexpected error while verifying role '{}': {}", roleName, e.getMessage());
+                log.error("❌ Failed to create role {}: {}", roleName, e.getMessage());
             }
-        });
+        }
 
-        log.info("✅ Role seeding complete.");
+        log.info("✅ Role seeding complete");
     }
-
 }

@@ -9,17 +9,17 @@ import lombok.Data;
  */
 @Data
 public class RegisterRequest {
-    @NotBlank
+    @NotBlank(message = "Username is required")
     private String username;
 
-    @NotBlank
+    @NotBlank(message = "Password is required")
     private String password;
 
-    @Email
-    @NotBlank
+    @NotBlank(message = "Email is required")
+    @Email(message = "Email must be valid")
     private String email;
 
-    @NotBlank
+    @NotBlank(message = "First name is required")
     private String firstName;
 
     private String lastName;
@@ -28,7 +28,7 @@ public class RegisterRequest {
     @NotBlank
     private String countryCode;
 
-    @NotBlank
+    @NotBlank(message = "Contact number is required")
     private String contactNo;
 
     private String organization;
