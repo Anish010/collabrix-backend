@@ -13,6 +13,8 @@
     <modules>
         <module>collabrix-common-libraries</module>
         <module>collabrix-auth-service</module>
+	<module>collabrix-security-starter</module>
+	<module>collabrix-global-config</module>
     </modules>
 
     <properties>

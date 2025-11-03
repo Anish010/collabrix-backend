@@ -3,11 +3,13 @@ package com.collabrix.auth.dto;
 import lombok.*;
 
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class RoleResponse {
-    private Long id;
+    private String id;
     private String name;
-    private boolean systemDefined;
+    private String description;
+    private Boolean composite;
+    private Boolean clientRole;
 }
