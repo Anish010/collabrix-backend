@@ -37,10 +37,11 @@
             <artifactId>collabrix-common-libraries</artifactId>
             <version>1.0.0</version>
         </dependency>
+
         <dependency>
-            <groupId>com.collabrix</groupId>
-            <artifactId>collabrix-security-starter</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
