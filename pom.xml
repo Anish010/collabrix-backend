@@ -15,6 +15,7 @@
         <module>collabrix-auth-service</module>
 	<module>collabrix-security-starter</module>
 	<module>collabrix-global-config</module>
+        <module>collabrix-user-service</module>
     </modules>
 
     <properties>
