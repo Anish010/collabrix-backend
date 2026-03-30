@@ -1,6 +1,5 @@
 package com.collabrix.auth.service;
 
-import com.collabrix.auth.service.interfaces.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
@@ -19,7 +18,7 @@ import java.util.Collections;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EmailVerificationServiceImpl implements EmailVerificationService {
+public class EmailVerificationService {
 
     private final Keycloak keycloakAdmin;
 

@@ -2,8 +2,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-
-    <!-- Parent -->
     <parent>
         <groupId>com.collabrix</groupId>
         <artifactId>collabrix-backend</artifactId>
@@ -11,35 +9,41 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <!-- Module Coordinates -->
+    <groupId>com.collabrix.auth</groupId>
     <artifactId>collabrix-auth-service</artifactId>
-    <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>collabrix-auth-service</name>
+    <name>Collabrix Auth Service</name>
     <description>Collabrix - Authentication and Security Microservice</description>
-
-
+	<url/>
+	<licenses>
+		<license/>
+	</licenses>
+	<developers>
+		<developer/>
+	</developers>
+	<scm>
+		<connection/>
+		<developerConnection/>
+		<tag/>
+		<url/>
+	</scm>
+	<properties>
+		<java.version>25</java.version>
+	</properties>
 	<dependencies>
         <!-- Shared libraries -->
         <dependency>
             <groupId>com.collabrix</groupId>
             <artifactId>collabrix-common-libraries</artifactId>
-            <version>1.0.4</version>
+            <version>1.0.0</version>
         </dependency>
+
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>com.vladmihalcea</groupId>
-            <artifactId>hibernate-types-60</artifactId>
-            <version>2.21.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
+
         <dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
@@ -52,14 +56,6 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-        </dependency>
 
         <!-- Kafka for Event-Driven Communication -->
         <dependency>
@@ -128,8 +124,8 @@
 							<artifactId>lombok</artifactId>
 						</path>
 					</annotationProcessorPaths>
-                    <source>14</source>
-                    <target>14</target>
+                    <source>9</source>
+                    <target>9</target>
                 </configuration>
 			</plugin>
 			<plugin>

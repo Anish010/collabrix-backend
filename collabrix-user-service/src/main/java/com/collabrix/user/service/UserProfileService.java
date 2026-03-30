@@ -1,11 +1,10 @@
 package com.collabrix.user.service;
 
-import com.collabrix.common.libraries.dto.UserProfileCreateRequest;
-import com.collabrix.common.libraries.events.UserLoginEvent;
-import com.collabrix.common.libraries.events.UserLogoutEvent;
 import com.collabrix.user.dto.UpdateProfileRequest;
 import com.collabrix.user.dto.UserProfileResponse;
 import com.collabrix.user.dto.UserStatisticsResponse;
+import com.collabrix.user.kafka.events.UserRegisteredEvent;
+
 import java.util.List;
 
 /**
@@ -13,9 +12,7 @@ import java.util.List;
  */
 public interface UserProfileService {
 
-    UserProfileResponse createProfile(UserProfileCreateRequest req);
-
-    boolean profileExists(String userId);
+    UserProfileResponse createProfile(UserRegisteredEvent event);
 
     UserProfileResponse getProfileById(String userId);
 
@@ -29,11 +26,11 @@ public interface UserProfileService {
 
     void hardDeleteProfile(String userId);
 
-    UserProfileResponse activateProfile(String userId);
+    UserProfileResponse reactivateProfile(String userId);
 
     List<UserProfileResponse> searchUsers(String searchTerm);
 
-    List<UserProfileResponse> getAllUsers();
+    List<UserProfileResponse> getAllActiveUsers();
 
     List<UserProfileResponse> getUsersByOrganization(String organization);
 
@@ -43,9 +40,8 @@ public interface UserProfileService {
 
     void updateLastLogin(String userId);
 
+    UserProfileResponse addRole(String userId, String role);
 
-    void logoutUser(UserLogoutEvent event);
-    void loginUser(UserLoginEvent event);
+    UserProfileResponse removeRole(String userId, String role);
 
-    Integer getProfileCompletionPercentage(String userId);
 }

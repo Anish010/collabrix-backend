@@ -21,8 +21,6 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
 
     boolean existsByUsername(String username);
 
-    boolean existsByContactNo(String contactNo);
-
     boolean existsByEmail(String email);
 
     List<UserProfile> findByActiveTrue();
@@ -36,7 +34,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, String
             "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
     List<UserProfile> searchUsers(@Param("searchTerm") String searchTerm);
 
-    @Query("SELECT u FROM UserProfile u WHERE u.profileCompleted = false")
+    @Query("SELECT u FROM UserProfile u WHERE u.profileCompleted = false AND u.active = true")
     List<UserProfile> findUsersWithIncompleteProfiles();
 
     List<UserProfile> findByCountryCode(String countryCode);

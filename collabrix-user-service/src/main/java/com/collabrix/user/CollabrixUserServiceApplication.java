@@ -20,14 +20,14 @@ public class CollabrixUserServiceApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(CollabrixUserServiceApplication.class, args);
-        System.out.println(""" 
+        System.out.println("""
                 
                 ╔═══════════════════════════════════════════════════════════╗
                 ║                                                           ║
                 ║     🚀 Collabrix User Service Started Successfully! 🚀   ║
                 ║                                                           ║
                 ║     📊 Service: User Profile Management                  ║
-                ║     🔌 Port: 8082                                        ║
+                ║     🔌 Port: 8081                                        ║
                 ║     📡 Kafka Consumer: ACTIVE                            ║
                 ║     🗄️  Database: PostgreSQL (collabrix_users)           ║
                 ║                                                           ║

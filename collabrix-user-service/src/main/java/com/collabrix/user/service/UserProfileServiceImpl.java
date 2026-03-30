@@ -1,27 +1,21 @@
 package com.collabrix.user.service;
 
-import com.collabrix.common.libraries.dto.UserProfileCreateRequest;
-import com.collabrix.common.libraries.events.UserLoginEvent;
-import com.collabrix.common.libraries.events.UserLogoutEvent;
-import com.collabrix.common.libraries.exceptions.BusinessRuleViolationException;
 import com.collabrix.user.dto.UpdateProfileRequest;
 import com.collabrix.user.dto.UserProfileResponse;
 import com.collabrix.user.dto.UserStatisticsResponse;
 import com.collabrix.user.entity.UserProfile;
-import com.collabrix.user.entity.UserRole;
 import com.collabrix.user.exception.InactiveUserException;
 import com.collabrix.user.exception.UserNotFoundException;
-import com.collabrix.user.mapper.UserProfileMapper;
+import com.collabrix.user.kafka.events.UserRegisteredEvent;
 import com.collabrix.user.repository.UserProfileRepository;
-import com.collabrix.user.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -34,95 +28,40 @@ import java.util.stream.Collectors;
 public class UserProfileServiceImpl implements UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
-    private final UserProfileMapper userProfileMapper;
-    private final UserRoleRepository userRoleRepository;
-    private final UserRoleService userRoleService;
 
     @Override
-    public UserProfileResponse createProfile(UserProfileCreateRequest req) {
-        log.info("Creating profile for user: {} ({})", req.getUsername(), req.getKeycloakUserId());
+    public UserProfileResponse createProfile(UserRegisteredEvent event) {
+        log.info("Creating profile for user: {} ({})", event.getUsername(), event.getKeycloakUserId());
 
-        String userId = req.getKeycloakUserId();
-
-        // Idempotency — return existing profile if already created
-        if (userProfileRepository.existsById(userId)) {
-            log.warn("⚠️ Profile already exists for user: {}", userId);
-            return getProfileById(userId);
-        }
-
-        if(userProfileRepository.existsByUsername(req.getUsername())) {
-            throw new BusinessRuleViolationException("Username already taken: " + req.getUsername());
-        }
-
-        if(userProfileRepository.existsByEmail(req.getEmail())) {
-            throw new BusinessRuleViolationException("Email already registered: " + req.getEmail());
-        }
-
-        if(req.getContactNo() != null && userProfileRepository.existsByContactNo(req.getContactNo())) {
-            throw new BusinessRuleViolationException("Contact number already registered: " + req.getContactNo());
+        // Idempotency check
+        if (userProfileRepository.existsById(event.getKeycloakUserId())) {
+            log.warn("⚠️ Profile already exists for user: {}", event.getKeycloakUserId());
+            return getProfileById(event.getKeycloakUserId());
         }
 
         // Create new profile
         UserProfile profile = UserProfile.builder()
-                .id(userId)
-                .username(req.getUsername())
-                .email(req.getEmail())
-                .firstName(req.getFirstName())
-                .lastName(req.getLastName())
-                .countryCode(req.getCountryCode())
-                .contactNo(req.getContactNo())
-                .organization(req.getOrganization())
+                .id(event.getKeycloakUserId())
+                .username(event.getUsername())
+                .email(event.getEmail())
+                .firstName(event.getFirstName())
+                .lastName(event.getLastName())
+                .countryCode(event.getCountryCode())
+                .contactNo(event.getContactNo())
+                .organization(event.getOrganization())
+                .roles(event.getRoles() != null ? event.getRoles() : new ArrayList<>())
                 .active(true)
-                .deleted(false)
-                .loginCount(0)
-                .logoutCount(0)
                 .profileCompleted(false)
                 .build();
 
         // Calculate initial profile completion
         profile.calculateProfileCompletion();
 
-        // Business rule: if profile marked completed but no contact number => invalid
-        if (profile.getProfileCompleted() && profile.getContactNo() == null) {
-            throw new BusinessRuleViolationException("Contact number required to complete profile");
-        }
+        UserProfile savedProfile = userProfileRepository.save(profile);
+        log.info("✅ Profile created successfully for user: {}", savedProfile.getUsername());
 
-
-
-        // Assign default role
-        final String defaultRole = "ROLE_GUEST";
-
-        UserRole existing = userRoleRepository
-                .findByKeycloakUserIdAndRoleNameIgnoreCase(userId, defaultRole);
-
-        if (existing == null) {
-            userRoleRepository.save(UserRole.builder()
-                    .keycloakUserId(userId)
-                    .roleName(defaultRole)
-                    .build()
-            );
-            log.info("🎯 Default role '{}' assigned to {}", defaultRole, userId);
-        } else {
-            log.info("⚠️ Default role already exists for {} — skipping", userId);
-        }
-
-        // First save profile
-        UserProfile saved = userProfileRepository.save(profile);
-        log.info("📁 Profile saved for {}", userId);
-
-        // 🔁 Return response with roles included
-        Set<String> roles = userRoleService.getUserRoles(userId);
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(savedProfile);
     }
-
-    public boolean profileExists(String userId) {
-        return userProfileRepository.existsById(userId);
-    }
-
 
     @Override
     @Transactional(readOnly = true)
@@ -130,13 +69,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         log.debug("Fetching profile by ID: {}", userId);
         UserProfile profile = userProfileRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
-
-        Set<String> roles = userRoleService.getUserRoles(userId);
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(profile);
     }
 
     @Override
@@ -145,13 +78,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         log.debug("Fetching profile by username: {}", username);
         UserProfile profile = userProfileRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
-
-        Set<String> roles = userRoleService.getUserRoles(profile.getId());
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(profile);
     }
 
     @Override
@@ -204,12 +131,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile updatedProfile = userProfileRepository.save(profile);
         log.info("✅ Profile updated successfully for user: {}", updatedProfile.getUsername());
 
-        Set<String> roles = userRoleService.getUserRoles(userId);
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(updatedProfile);
     }
 
     @Override
@@ -229,12 +151,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile updatedProfile = userProfileRepository.save(profile);
         log.info("✅ Avatar updated successfully for user: {}", updatedProfile.getUsername());
 
-        Set<String> roles = userRoleService.getUserRoles(userId);
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(updatedProfile);
     }
 
     @Override
@@ -244,7 +161,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile profile = userProfileRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
 
-        profile.setDeleted(true);
+        profile.deactivate();
         userProfileRepository.save(profile);
 
         log.info("🟠 Profile soft deleted for user: {}", profile.getUsername());
@@ -263,7 +180,7 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     @Override
-    public UserProfileResponse activateProfile(String userId) {
+    public UserProfileResponse reactivateProfile(String userId) {
         log.info("Reactivating profile for user: {}", userId);
 
         UserProfile profile = userProfileRepository.findById(userId)
@@ -273,13 +190,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         UserProfile reactivatedProfile = userProfileRepository.save(profile);
 
         log.info("✅ Profile reactivated for user: {}", reactivatedProfile.getUsername());
-
-        Set<String> roles = userRoleService.getUserRoles(userId);
-
-        UserProfileResponse response = userProfileMapper.toResponse(profile);
-        response.setRoles(roles);
-
-        return response;
+        return mapToResponse(reactivatedProfile);
     }
 
     @Override
@@ -288,38 +199,18 @@ public class UserProfileServiceImpl implements UserProfileService {
         log.debug("Searching users with term: {}", searchTerm);
         List<UserProfile> profiles = userProfileRepository.searchUsers(searchTerm);
         return profiles.stream()
-                .map(userProfileMapper::toResponse)
+                .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-
     @Override
     @Transactional(readOnly = true)
-    public List<UserProfileResponse> getAllUsers() {
-
-        List<UserProfile> users = userProfileRepository.findAll();
-
-        List<String> userIds = users.stream()
-                .map(UserProfile::getId)
-                .toList();
-
-        Map<String, Set<String>> rolesByUserId =
-                userRoleRepository.findByKeycloakUserIdIn(userIds)
-                        .stream()
-                        .collect(Collectors.groupingBy(
-                                UserRole::getKeycloakUserId,
-                                Collectors.mapping(UserRole::getRoleName, Collectors.toSet())
-                        ));
-
-        return users.stream()
-                .map(user -> {
-                    UserProfileResponse response = userProfileMapper.toResponse(user);
-                    response.setRoles(
-                            rolesByUserId.getOrDefault(user.getId(), Set.of())
-                    );
-                    return response;
-                })
-                .toList();
+    public List<UserProfileResponse> getAllActiveUsers() {
+        log.debug("Fetching all active users");
+        List<UserProfile> profiles = userProfileRepository.findByActiveTrue();
+        return profiles.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -328,7 +219,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         log.debug("Fetching users by organization: {}", organization);
         List<UserProfile> profiles = userProfileRepository.findByOrganization(organization);
         return profiles.stream()
-                .map(userProfileMapper::toResponse)
+                .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
@@ -338,7 +229,7 @@ public class UserProfileServiceImpl implements UserProfileService {
         log.debug("Fetching users with incomplete profiles");
         List<UserProfile> profiles = userProfileRepository.findUsersWithIncompleteProfiles();
         return profiles.stream()
-                .map(userProfileMapper::toResponse)
+                .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
@@ -379,24 +270,65 @@ public class UserProfileServiceImpl implements UserProfileService {
     }
 
     @Override
-    public void logoutUser(UserLogoutEvent event) {
-        UserProfile user = userProfileRepository.findById(event.getKeycloakUserId())
-                .orElseThrow(() -> new UserNotFoundException("User not found: " + event.getKeycloakUserId()));
-        user.onLogout();
-    }
+    public UserProfileResponse addRole(String userId, String role) {
+        log.info("Adding role '{}' to user {}", role, userId);
 
-    @Override
-    public void loginUser(UserLoginEvent event) {
-        UserProfile user = userProfileRepository.findById(event.getKeycloakUserId())
-                .orElseThrow(() -> new UserNotFoundException("User not found: " + event.getKeycloakUserId()));
-        user.onLogin();
-        userProfileRepository.save(user);
-    }
-
-    @Override
-    public Integer getProfileCompletionPercentage(String userId) {
-        UserProfile user = userProfileRepository.findById(userId)
+        UserProfile profile = userProfileRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
-        return user.getProfileCompletionPercentage();
+
+        if (!profile.getRoles().contains(role)) {
+            profile.getRoles().add(role.toUpperCase());
+            userProfileRepository.save(profile);
+            log.info("✅ Role '{}' added to user {}", role, userId);
+        } else {
+            log.info("ℹ️ User {} already has role '{}'", userId, role);
+        }
+
+        return mapToResponse(profile);
     }
+
+    @Override
+    public UserProfileResponse removeRole(String userId, String role) {
+        log.info("Removing role '{}' from user {}", role, userId);
+
+        UserProfile profile = userProfileRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
+
+        if (profile.getRoles().removeIf(r -> r.equalsIgnoreCase(role))) {
+            userProfileRepository.save(profile);
+            log.info("✅ Role '{}' removed from user {}", role, userId);
+        } else {
+            log.info("ℹ️ User {} did not have role '{}'", userId, role);
+        }
+
+        return mapToResponse(profile);
+    }
+
+    // Helper method to map entity to response DTO
+    private UserProfileResponse mapToResponse(UserProfile profile) {
+        return UserProfileResponse.builder()
+                .id(profile.getId())
+                .username(profile.getUsername())
+                .email(profile.getEmail())
+                .firstName(profile.getFirstName())
+                .lastName(profile.getLastName())
+                .countryCode(profile.getCountryCode())
+                .contactNo(profile.getContactNo())
+                .organization(profile.getOrganization())
+                .avatarUrl(profile.getAvatarUrl())
+                .bio(profile.getBio())
+                .linkedinUrl(profile.getLinkedinUrl())
+                .githubUrl(profile.getGithubUrl())
+                .twitterUrl(profile.getTwitterUrl())
+                .websiteUrl(profile.getWebsiteUrl())
+                .roles(profile.getRoles())
+                .active(profile.getActive())
+                .profileCompleted(profile.getProfileCompleted())
+                .profileCompletionPercentage(profile.getProfileCompletionPercentage())
+                .lastLoginAt(profile.getLastLoginAt())
+                .createdAt(profile.getCreatedAt())
+                .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
+
 }

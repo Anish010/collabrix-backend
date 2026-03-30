@@ -1,20 +1,19 @@
 package com.collabrix.user.controller;
 
-import com.collabrix.common.libraries.dto.ApiResponse;
 import com.collabrix.user.dto.UpdateAvatarRequest;
 import com.collabrix.user.dto.UpdateProfileRequest;
 import com.collabrix.user.dto.UserProfileResponse;
+import com.collabrix.user.dto.UserStatisticsResponse;
 import com.collabrix.user.service.UserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller for user profile operations
@@ -32,18 +31,17 @@ public class UserProfileController {
      */
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserById(@PathVariable String userId) {
+    public ResponseEntity<UserProfileResponse> getUserById(@PathVariable String userId) {
         log.info("📥 GET /api/v1/users/{}", userId);
-        UserProfileResponse profile = userProfileService.getProfileById(userId);
-        return ResponseEntity.ok(ApiResponse.success(profile));
+        UserProfileResponse response = userProfileService.getProfileById(userId);
+        return ResponseEntity.ok(response);
     }
-
 
     /**
      * Get user profile by username
      */
-    @GetMapping("/username")
-    public ResponseEntity<UserProfileResponse> getUserByUsername(@RequestParam String username) {
+    @GetMapping("/username/{username}")
+    public ResponseEntity<UserProfileResponse> getUserByUsername(@PathVariable String username) {
         log.info("📥 GET /api/v1/users/username/{}", username);
         UserProfileResponse response = userProfileService.getProfileByUsername(username);
         return ResponseEntity.ok(response);
@@ -54,11 +52,11 @@ public class UserProfileController {
      */
     @GetMapping("/me")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> getCurrentUser(
+    public ResponseEntity<UserProfileResponse> getCurrentUser(
             @RequestAttribute("userId") String userId) {
         log.info("📥 GET /api/v1/users/me");
-        UserProfileResponse profile = userProfileService.getProfileById(userId);
-        return ResponseEntity.ok(ApiResponse.success(profile));
+        UserProfileResponse response = userProfileService.getProfileById(userId);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -66,13 +64,12 @@ public class UserProfileController {
      */
     @PutMapping("/{userId}")
     @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
-    public ResponseEntity<ApiResponse<UserProfileResponse>> updateProfile(
+    public ResponseEntity<UserProfileResponse> updateProfile(
             @PathVariable String userId,
             @Valid @RequestBody UpdateProfileRequest request) {
-
         log.info("📥 PUT /api/v1/users/{}", userId);
-        UserProfileResponse profile = userProfileService.updateProfile(userId, request);
-        return ResponseEntity.ok(ApiResponse.success(profile));
+        UserProfileResponse response = userProfileService.updateProfile(userId, request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -89,18 +86,30 @@ public class UserProfileController {
     }
 
     /**
-     * Soft delete user profile
+     * Soft delete user profile (Admin only)
      */
     @DeleteMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
-    public ResponseEntity<ApiResponse<Void>> deleteProfile(@PathVariable String userId) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteProfile(@PathVariable String userId) {
         log.info("📥 DELETE /api/v1/users/{}", userId);
         userProfileService.deleteProfile(userId);
-
-        return ResponseEntity.ok(
-                ApiResponse.success("Profile deleted", null)
-        );
+        return ResponseEntity.ok(Map.of(
+                "message", "User profile deleted successfully",
+                "userId", userId
+        ));
     }
+
+    /**
+     * Reactivate user profile (Admin only)
+     */
+    @PostMapping("/{userId}/reactivate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserProfileResponse> reactivateProfile(@PathVariable String userId) {
+        log.info("📥 POST /api/v1/users/{}/reactivate", userId);
+        UserProfileResponse response = userProfileService.reactivateProfile(userId);
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * Search users
      */
@@ -113,15 +122,61 @@ public class UserProfileController {
     }
 
     /**
-     * Get user profile completion statistics
+     * Get all active users (Admin only)
      */
-    @GetMapping("/me/profile-completion")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<Integer>> getMyProfileCompletion(
-            @RequestAttribute("userId") String userId) {
-        log.info("📥 GET /api/v1/users/me/profile-completion");
-        Integer percent = userProfileService.getProfileCompletionPercentage(userId);
-        return ResponseEntity.ok(ApiResponse.success(percent));
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserProfileResponse>> getAllActiveUsers() {
+        log.info("📥 GET /api/v1/users");
+        List<UserProfileResponse> response = userProfileService.getAllActiveUsers();
+        return ResponseEntity.ok(response);
     }
 
+    /**
+     * Get users by organization
+     */
+    @GetMapping("/organization/{organization}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserProfileResponse>> getUsersByOrganization(
+            @PathVariable String organization) {
+        log.info("📥 GET /api/v1/users/organization/{}", organization);
+        List<UserProfileResponse> response = userProfileService.getUsersByOrganization(organization);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get users with incomplete profiles (Admin only)
+     */
+    @GetMapping("/incomplete")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserProfileResponse>> getUsersWithIncompleteProfiles() {
+        log.info("📥 GET /api/v1/users/incomplete");
+        List<UserProfileResponse> response = userProfileService.getUsersWithIncompleteProfiles();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Get user statistics (Admin only)
+     */
+    @GetMapping("/statistics")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserStatisticsResponse> getUserStatistics() {
+        log.info("📥 GET /api/v1/users/statistics");
+        UserStatisticsResponse response = userProfileService.getUserStatistics();
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Update last login time
+     */
+    @PostMapping("/{userId}/last-login")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.claims['sub']")
+    public ResponseEntity<Map<String, String>> updateLastLogin(@PathVariable String userId) {
+        log.info("📥 POST /api/v1/users/{}/last-login", userId);
+        userProfileService.updateLastLogin(userId);
+        return ResponseEntity.ok(Map.of(
+                "message", "Last login updated successfully",
+                "userId", userId
+        ));
+    }
 }

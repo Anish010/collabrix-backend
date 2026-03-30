@@ -15,7 +15,7 @@
     <artifactId>collabrix-common-libraries</artifactId>
 
     <name>collabrix-common-libraries</name>
-    <version>1.0.4</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <description>Common DTOs, constants, utils, and exception handling</description>
 

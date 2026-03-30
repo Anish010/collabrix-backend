@@ -5,12 +5,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.openfeign.EnableFeignClients;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = "com.collabrix")
-@EnableScheduling
-@EnableFeignClients(basePackages = "com.collabrix.auth.client")
 public class CollabrixAuthServiceApplication {
 
     private static final Logger logger = LoggerFactory.getLogger(CollabrixAuthServiceApplication.class);
@@ -32,3 +28,5 @@ public class CollabrixAuthServiceApplication {
 	}
 
 }
+
+

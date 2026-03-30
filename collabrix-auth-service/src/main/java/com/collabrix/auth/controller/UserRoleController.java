@@ -1,7 +1,7 @@
 package com.collabrix.auth.controller;
 
 import com.collabrix.auth.dto.UserResponse;
-import com.collabrix.auth.service.interfaces.KeycloakUserService;
+import com.collabrix.auth.service.KeycloakUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
