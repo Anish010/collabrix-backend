@@ -1,12 +1,12 @@
 package com.collabrix.auth.controller;
 
-import com.collabrix.auth.dto.KeycloakLoginRequest;
-import com.collabrix.auth.dto.KeycloakTokenResponse;
-import com.collabrix.auth.dto.RegisterRequest;
-import com.collabrix.auth.dto.UserResponse;
-import com.collabrix.auth.service.EmailVerificationService;
-import com.collabrix.auth.service.KeycloakAuthService;
-import com.collabrix.auth.service.KeycloakUserService;
+import com.collabrix.auth.dto.*;
+import com.collabrix.auth.service.RegistrationOrchestratorServiceImpl;
+import com.collabrix.auth.service.interfaces.EmailVerificationService;
+import com.collabrix.auth.service.interfaces.KeycloakAuthService;
+import com.collabrix.auth.service.interfaces.KeycloakUserService;
+import com.collabrix.common.libraries.dto.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +26,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final KeycloakAuthService keycloakAuthService;
-    private final KeycloakUserService keycloakUserService;
+    private final KeycloakAuthService authService;
+    private final KeycloakUserService userService;
+    private final RegistrationOrchestratorServiceImpl registrationOrchestratorServiceImpl;
     private final EmailVerificationService emailVerificationService;
 
     /**
@@ -35,41 +36,44 @@ public class AuthController {
      * Extended profile fields are published as event for user-service
      */
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@Valid @RequestBody RegisterRequest request) {
-        log.info("🔐 Registration request for user: {}", request.getUsername());
-        UserResponse user = keycloakUserService.registerUser(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(user);
+    public ResponseEntity<ApiResponse<UserResponse>> register(
+            @Valid @RequestBody UserRegisterRequest request) {
+
+        UserResponse user = registrationOrchestratorServiceImpl.registerUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(user));
     }
 
     /**
      * Login user and get JWT tokens from Keycloak
      */
     @PostMapping("/login")
-    public ResponseEntity<KeycloakTokenResponse> login(@Valid @RequestBody KeycloakLoginRequest request) {
-        log.info("🔑 Login request for user: {}", request.getUsername());
-        KeycloakTokenResponse tokens = keycloakAuthService.login(request);
-        return ResponseEntity.ok(tokens);
+    public ResponseEntity<KeycloakTokenResponse> login(
+            @Valid @RequestBody KeycloakLoginRequest request,
+            HttpServletRequest httpRequest) {
+
+        return ResponseEntity.ok(authService.login(request, httpRequest));
     }
+
 
     /**
      * Refresh access token using refresh token
      */
     @PostMapping("/refresh")
-    public ResponseEntity<KeycloakTokenResponse> refreshToken(@RequestBody Map<String, String> request) {
-        log.info("🔄 Token refresh request");
-        String refreshToken = request.get("refresh_token");
-        KeycloakTokenResponse tokens = keycloakAuthService.refreshToken(refreshToken);
-        return ResponseEntity.ok(tokens);
+    public ResponseEntity<KeycloakTokenResponse> refresh(
+            @RequestBody Map<String, String> req) {
+
+        return ResponseEntity.ok(authService.refreshToken(req.get("refresh_token")));
     }
 
     /**
      * Logout user and invalidate tokens
      */
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout(@RequestBody Map<String, String> request) {
-        log.info("👋 Logout request");
-        String refreshToken = request.get("refresh_token");
-        keycloakAuthService.logout(refreshToken);
+    public ResponseEntity<Map<String, String>> logout(
+            @RequestBody KeycloakLogoutRequest request) {
+
+        authService.logout(request);
         return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 

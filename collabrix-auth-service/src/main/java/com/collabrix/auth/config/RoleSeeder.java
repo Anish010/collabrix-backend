@@ -1,6 +1,6 @@
 package com.collabrix.auth.config;
 
-import com.collabrix.auth.service.KeycloakRoleService;
+import com.collabrix.auth.service.interfaces.KeycloakRoleService;
 import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;

@@ -1,9 +1,11 @@
 package com.collabrix.common.libraries.exceptions.handler;
 
-import com.collabrix.common.libraries.dto.ApiErrorResponse;
-import com.collabrix.common.libraries.exceptions.*;
+import com.collabrix.common.libraries.dto.ApiError;
+import com.collabrix.common.libraries.dto.ApiResponse;
+import com.collabrix.common.libraries.exceptions.BusinessRuleViolationException;
+import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
+import com.collabrix.common.libraries.exceptions.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,50 +17,45 @@ import java.time.LocalDateTime;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @Value("${service.name:unknown-service}")
-    private String serviceName;
+    private ResponseEntity<ApiResponse<Void>> build(
+            HttpStatus status,
+            String errorCode,
+            String message
+    ) {
+        ApiError apiError = ApiError.builder()
+                .timestamp(LocalDateTime.now())
+                .status(status)
+                .error(errorCode)
+                .message(message)
+                .build();
 
-    private ResponseEntity<ApiErrorResponse> buildResponse(HttpStatus status, String message) {
-        return new ResponseEntity<>(
-                new ApiErrorResponse(
-                        LocalDateTime.now(),
-                        status.value(),
-                        status.getReasonPhrase(),
-                        message,
-                        serviceName
-                ),
-                status
-        );
+        return ResponseEntity.status(status)
+                .body(ApiResponse.fail(apiError));
     }
 
-
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException ex) {
-        log.warn("Resource not found: {}", ex.getMessage());
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
+        log.warn("❗ Resource not found: {}", ex.getMessage());
+        return build(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage());
     }
 
     @ExceptionHandler(ResourceAlreadyExistsException.class)
-    public ResponseEntity<ApiErrorResponse> handleConflict(ResourceAlreadyExistsException ex) {
-        log.warn("Conflict: {}", ex.getMessage());
-        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleConflict(ResourceAlreadyExistsException ex) {
+        log.warn("⚠️ Resource conflict: {}", ex.getMessage());
+        return build(HttpStatus.CONFLICT, "RESOURCE_ALREADY_EXISTS", ex.getMessage());
     }
 
     @ExceptionHandler(BusinessRuleViolationException.class)
-    public ResponseEntity<ApiErrorResponse> handleBusinessViolation(BusinessRuleViolationException ex) {
-        log.warn("Business rule violation: {}", ex.getMessage());
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
-    }
-
-    @ExceptionHandler(BaseApplicationException.class)
-    public ResponseEntity<ApiErrorResponse> handleBaseAppException(BaseApplicationException ex) {
-        log.error("Application exception: {}", ex.getMessage());
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleBusinessViolation(BusinessRuleViolationException ex) {
+        log.warn("🚫 Business rule violation: {}", ex.getMessage());
+        return build(HttpStatus.BAD_REQUEST, "BUSINESS_RULE_VIOLATION", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex) {
-        log.error("Unexpected error", ex);
-        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong. Please try again later.");
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        log.error("💥 Unexpected error", ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "INTERNAL_SERVER_ERROR",
+                "Something went wrong. Please try again later.");
     }
 }

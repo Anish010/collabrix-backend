@@ -1,9 +1,9 @@
-package com.collabrix.auth.kafka.events;
+package com.collabrix.common.libraries.events;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
+
+import java.time.LocalDateTime;
 
 /**
  * Event published when a user is deleted (soft/hard delete).
@@ -11,16 +11,12 @@ import lombok.NoArgsConstructor;
  * 1. user-service: to mark user as deleted in PostgreSQL
  * 2. notification-service: to send account deletion confirmation
  */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserDeletedEvent {
-
-    private String eventId;
-    private String eventType = "USER_DELETED";
-    private Long timestamp;
-
+@SuperBuilder
+public class UserDeletedEvent extends BaseEvent {
     private String keycloakUserId;
     private String username;
     private String deletedBy;       // Admin username who deleted the user
