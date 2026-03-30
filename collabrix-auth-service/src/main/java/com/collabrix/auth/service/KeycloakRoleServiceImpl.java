@@ -1,6 +1,7 @@
 package com.collabrix.auth.service;
 
 import com.collabrix.auth.dto.RoleResponse;
+import com.collabrix.auth.service.interfaces.KeycloakRoleService;
 import com.collabrix.common.libraries.exceptions.KeycloakException;
 import com.collabrix.common.libraries.exceptions.ResourceAlreadyExistsException;
 import com.collabrix.common.libraries.exceptions.ResourceNotFoundException;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KeycloakRoleService {
+public class KeycloakRoleServiceImpl implements KeycloakRoleService {
 
     private final Keycloak keycloakAdmin;
 

@@ -1,9 +1,7 @@
-package com.collabrix.auth.kafka.events;
+package com.collabrix.common.libraries.events;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lombok.experimental.SuperBuilder;
 
 /**
  * Event published when a user's role is changed (assigned/removed).
@@ -11,16 +9,12 @@ import lombok.NoArgsConstructor;
  * 1. user-service: to update user role in PostgreSQL
  * 2. notification-service: to notify user about role change
  */
-@Data
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRoleChangedEvent {
-
-    private String eventId;
-    private String eventType = "USER_ROLE_CHANGED";
-    private Long timestamp;
-
+@SuperBuilder
+public class UserRoleChangedEvent extends BaseEvent {
     private String keycloakUserId;
     private String username;
     private String roleName;

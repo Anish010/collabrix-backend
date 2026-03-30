@@ -1,17 +1,15 @@
-package com.collabrix.user.kafka.events;
+package com.collabrix.common.libraries.dto;
 
-import lombok.*;
-
-import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
 @AllArgsConstructor
+@NoArgsConstructor
 @Builder
-public class UserRegisteredEvent {
-    private String eventId;
-    private String eventType;
-    private Long timestamp;
+public class UserProfileCreateRequest {
     private String keycloakUserId;
     private String username;
     private String email;
@@ -20,5 +18,4 @@ public class UserRegisteredEvent {
     private String countryCode;
     private String contactNo;
     private String organization;
-    private List<String> roles;
 }

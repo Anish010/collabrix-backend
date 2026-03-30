@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KeycloakTokenResponse {
+
+    private transient String keycloakUserId;
+
     @JsonProperty("access_token")
     private String accessToken;
 

@@ -1,7 +1,19 @@
-version: '3.8'
-
 services:
-  # 🧠 Zookeeper - Required for Kafka
+  # Keycloak 
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: collabrix-keycloak
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    networks:
+      - collabrix-network
+  # Zookeeper - Required for Kafka
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     container_name: collabrix-zookeeper
@@ -15,7 +27,6 @@ services:
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-logs:/var/lib/zookeeper/log
-
   # 🪶 Kafka Broker
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -45,7 +56,6 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-
   # 📊 Kafka UI (Developer Dashboard)
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -60,11 +70,9 @@ services:
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
     networks:
       - collabrix-network
-
 networks:
   collabrix-network:
     driver: bridge
-
 volumes:
   zookeeper-data:
   zookeeper-logs:

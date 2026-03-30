@@ -1,11 +1,13 @@
 package com.collabrix.auth.controller;
 
 import com.collabrix.auth.dto.RoleResponse;
-import com.collabrix.auth.service.KeycloakRoleService;
+import com.collabrix.auth.service.interfaces.KeycloakRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -56,6 +58,16 @@ public class RoleController {
         String description = request.get("description");
         RoleResponse role = keycloakRoleService.createRole(roleName, description);
         return ResponseEntity.ok(role);
+    }
+
+
+    @GetMapping("/debug/roles")
+    @PreAuthorize("isAuthenticated()")
+    public List<String> debugRoles(Authentication authentication) {
+        return authentication.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .toList();
     }
 
     /**

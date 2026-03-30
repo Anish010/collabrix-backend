@@ -5,16 +5,28 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Parent: Spring Boot -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.7</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
+    <!-- Project Coordinates -->
     <groupId>com.collabrix</groupId>
     <artifactId>collabrix-backend</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
 
+    <name>Collabrix Backend</name>
+    <description>Collabrix Backend Project</description>
+
     <modules>
         <module>collabrix-common-libraries</module>
         <module>collabrix-auth-service</module>
-	<module>collabrix-security-starter</module>
-	<module>collabrix-global-config</module>
+        <module>collabrix-security-starter</module>
+	    <module>collabrix-global-config</module>
         <module>collabrix-user-service</module>
     </modules>
 
