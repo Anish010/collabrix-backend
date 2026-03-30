@@ -1,8 +1,6 @@
 package com.collabrix.user.config;
 
-import com.collabrix.user.kafka.events.UserDeletedEvent;
-import com.collabrix.user.kafka.events.UserRegisteredEvent;
-import com.collabrix.user.kafka.events.UserRoleChangedEvent;
+import com.collabrix.common.libraries.events.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +35,7 @@ public class KafkaConsumerConfig {
         return props;
     }
 
-    // ✅ Generic method to build consumer factories
+    // Generic method to build consumer factories
     private <T> ConsumerFactory<String, T> buildConsumerFactory(Class<T> targetType) {
         JsonDeserializer<T> deserializer = new JsonDeserializer<>(targetType);
         deserializer.addTrustedPackages("*");
@@ -56,7 +54,7 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-    // 🔴 User Deleted
+    //  User Deleted
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, UserDeletedEvent> userDeletedKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, UserDeletedEvent> factory =
@@ -65,7 +63,25 @@ public class KafkaConsumerConfig {
         return factory;
     }
 
-    // 🟠 User Role Changed
+    //User Logout
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserLogoutEvent> userLogoutKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserLogoutEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(buildConsumerFactory(UserLogoutEvent.class));
+        return factory;
+    }
+
+    //User Login
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, UserLoginEvent> userLoginKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, UserLoginEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(buildConsumerFactory(UserLoginEvent.class));
+        return factory;
+    }
+
+    //  User Role Changed
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, UserRoleChangedEvent> userRoleChangedKafkaListenerContainerFactory() {
         ConcurrentKafkaListenerContainerFactory<String, UserRoleChangedEvent> factory =

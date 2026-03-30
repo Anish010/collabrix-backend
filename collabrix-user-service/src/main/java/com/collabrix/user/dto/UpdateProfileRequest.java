@@ -20,7 +20,6 @@ public class UpdateProfileRequest {
     @Size(max = 100, message = "Last name must not exceed 100 characters")
     private String lastName;
 
-    @Size(max = 3)
     private String countryCode;
 
     @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format")

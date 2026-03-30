@@ -5,9 +5,11 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * User Profile Entity - Stores extended user information
@@ -19,9 +21,10 @@ import java.util.List;
         @Index(name = "idx_email", columnList = "email"),
         @Index(name = "idx_active", columnList = "active")
 })
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Getter
+@Setter
 @Builder
 public class UserProfile {
 
@@ -72,6 +75,18 @@ public class UserProfile {
     @Builder.Default
     private Boolean active = true;
 
+    @Column(name = "suspend", nullable = false)
+    @Builder.Default
+    private Boolean suspend = false;
+
+    @Column(name = "deleted", nullable = false)
+    @Builder.Default
+    private Boolean deleted = false;
+
+    @Column(name = "timezone", nullable = false)
+    @Builder.Default
+    private String timezone = "Asia/Kolkata";
+
     @Column(name = "profile_completed")
     @Builder.Default
     private Boolean profileCompleted = false;
@@ -81,7 +96,13 @@ public class UserProfile {
     private Integer profileCompletionPercentage = 0;
 
     @Column(name = "last_login_at")
-    private LocalDateTime lastLoginAt;
+    private Instant lastLoginAt;
+
+    @Column(name = "last_logout_at")
+    private Instant lastLogoutAt;
+
+    private Integer loginCount;
+    private Integer logoutCount;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -91,32 +112,28 @@ public class UserProfile {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(
-            name = "user_roles",
-            joinColumns = @JoinColumn(name = "user_id")
-    )
-    @Column(name = "role")
-    @Builder.Default
-    private List<String> roles = new ArrayList<>();
-
-    // Business Methods
+    private Set<String> roles;
 
     /**
      * Calculate profile completion percentage
      */
     public void calculateProfileCompletion() {
-        int totalFields = 12; // Total trackable fields
-        int filledFields = 0;
+        int filled = 0;
+        int total = 10;
 
-        filledFields = getFilledFields(filledFields, firstName, lastName, countryCode, contactNo, organization);
-        filledFields = getFilledFields(filledFields, avatarUrl, bio, linkedinUrl, githubUrl, twitterUrl);
-        if (websiteUrl != null && !websiteUrl.isEmpty()) filledFields++;
-        // Username and email are always filled (from registration)
-        filledFields += 2;
+        if (firstName != null) filled++;
+        if (lastName != null) filled++;
+        if (countryCode != null) filled++;
+        if (contactNo != null) filled++;
+        if (organization != null) filled++;
+        if (avatarUrl != null) filled++;
+        if (bio != null) filled++;
+        if (linkedinUrl != null) filled++;
+        if (githubUrl != null) filled++;
+        if (websiteUrl != null) filled++;
 
-        this.profileCompletionPercentage = (filledFields * 100) / totalFields;
-        this.profileCompleted = this.profileCompletionPercentage >= 80;
+        this.profileCompletionPercentage = (filled * 100) / total;
+        this.profileCompleted = profileCompletionPercentage >= 80;
     }
 
     private int getFilledFields(int filledFields, String firstName, String lastName, String countryCode, String contactNo, String organization) {
@@ -132,13 +149,25 @@ public class UserProfile {
      * Update last login timestamp
      */
     public void updateLastLogin() {
-        this.lastLoginAt = LocalDateTime.now();
+        this.lastLoginAt = Instant.now();
     }
 
     /**
      * Soft delete (deactivate) user
      */
     public void deactivate() {
+        this.active = false;
+    }
+
+    public void onLogin() {
+        this.lastLoginAt = Instant.now();
+        this.loginCount++;
+        this.active = true;
+    }
+
+    public void onLogout() {
+        this.lastLogoutAt = Instant.now();
+        this.logoutCount++;
         this.active = false;
     }
 

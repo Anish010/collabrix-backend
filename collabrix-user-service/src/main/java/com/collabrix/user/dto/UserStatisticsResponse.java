@@ -16,6 +16,8 @@ public class UserStatisticsResponse {
     private Long totalUsers;
     private Long activeUsers;
     private Long inactiveUsers;
+    private long loginEvents;
+    private long logoutEvents;
     private Long completedProfiles;
     private Long averageProfileCompletion;
 }
